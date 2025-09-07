@@ -1,0 +1,7 @@
+pandas
+EbookLib
+PyMuPDF
+requests
+beautifulsoup4
+googlesearch-python
+openpyxl
