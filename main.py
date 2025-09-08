@@ -5,6 +5,13 @@ import re
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
+import sys
+import io
+
+# UnicodeEncodeError 방지를 위해 stdout/stderr 인코딩 설정
+sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding = 'utf-8')
+
 
 # 사용자의 홈 디렉토리를 기준으로 절대 경로 설정
 HOME = Path.home()
@@ -28,16 +35,29 @@ def clean_filename(filename):
 
     return cleaned_name, ''
 
+def _extract_toc_recursively(toc_items, level=0):
+    """ebooklib의 중첩된 toc를 재귀적으로 파싱하여 문자열로 만듭니다."""
+    toc_list = []
+    for item in toc_items:
+        if isinstance(item, tuple):
+            # item is a nested tuple: (Link, (sub-link1, sub-link2, ...))
+            link, children = item
+            toc_list.append("  " * level + f"- {link.title}")
+            toc_list.extend(_extract_toc_recursively(children, level + 1))
+        else:
+            # item is a Link
+            toc_list.append("  " * level + f"- {item.title}")
+    return toc_list
+
 def extract_epub_data(file_path):
     """EPUB 파일에서 목차와 서문을 추출합니다."""
     book = epub.read_epub(file_path)
     toc = []
     preface = ""
 
-    # 1. 목차 추출
-    for item in book.toc:
-        toc.append(item.title)
-    toc_text = "\n".join(toc)
+    # 1. 목차 추출 (중첩 구조 처리)
+    toc_list = _extract_toc_recursively(book.toc)
+    toc_text = "\n".join(toc_list)
 
     # 2. 서문 추출 (키워드 기반)
     preface_keywords = ['서문', '머리말', '프롤로그', '시작하며']
